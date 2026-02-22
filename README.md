@@ -2,6 +2,17 @@
 
 `xtldr` is a Copilot-powered terminal assistant that turns a natural-language request into executable command candidates.
 
+## 🎬 Demo
+
+[![asciicast](https://asciinema.org/a/fadSiG25I7sqHW2C.svg)](https://asciinema.org/a/fadSiG25I7sqHW2C)
+
+## ✅ Prerequisite
+
+- 🤖 GitHub Copilot CLI is required.
+- 🔗 Install guide: [Installing GitHub Copilot CLI](https://docs.github.com/en/copilot/how-tos/copilot-cli/set-up-copilot-cli/install-copilot-cli)
+- 🛠 Go environment is required (`go 1.25.3+` as defined in `go.mod`).
+- 🔗 Install Go: [Download and install Go](https://go.dev/doc/install)
+
 ## ✨ Features
 
 - 🤖 Generate up to 5 executable command candidates from your request
