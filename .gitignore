@@ -1,0 +1,40 @@
+# Binaries
+xtldr
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Build directories
+bin/
+dist/
+build/
+
+# Go coverage and profiles
+coverage.out
+coverage.txt
+*.coverprofile
+.coverprofile
+*.prof
+
+# Logs and temp files
+*.log
+*.tmp
+*.temp
+
+# Environment files
+.env
+.env.*
+
+# Editors / IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
