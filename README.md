@@ -34,6 +34,7 @@ xtldr version
 ### Flags
 
 - `-e` Hide the **Command Explanation** panel
+- `-n`, `--non-interactive` Print generated commands directly (for scripts/CI)
 - `-v`, `--version` Print version information
 
 ### Examples
@@ -42,6 +43,7 @@ xtldr version
 xtldr "find large files in current directory"
 xtldr "show top 10 processes by memory on macOS"
 xtldr -e "show top 10 processes by memory on macOS"
+xtldr -n "show top 10 processes by memory on macOS"
 xtldr help
 xtldr roadmap
 xtldr version
