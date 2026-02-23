@@ -27,6 +27,7 @@
 ```bash
 xtldr [flags] <request>
 xtldr help
+xtldr roadmap
 xtldr version
 ```
 
@@ -42,13 +43,34 @@ xtldr "find large files in current directory"
 xtldr "show top 10 processes by memory on macOS"
 xtldr -e "show top 10 processes by memory on macOS"
 xtldr help
+xtldr roadmap
 xtldr version
 ```
 
 ## ℹ️ Help & Version Commands
 
 - `xtldr help`: Show complete CLI help
+- `xtldr roadmap`: Show capability gap checklist to confirm before implementation
 - `xtldr version`: Show version, commit, and build date
+
+## 🧩 Capability Gap Checklist (vs mature CLI tools)
+
+Run:
+
+```bash
+xtldr roadmap
+```
+
+Current checklist:
+
+- [ ] Shell-aware output mode (bash/zsh/powershell safe command variants)
+- [ ] Non-interactive mode for CI/scripts (machine-readable output)
+- [ ] Risk guardrails (dangerous command detection + confirmation)
+- [ ] Execution preview (show expected impact before copy/execute)
+- [ ] Session history (store, search, and reuse previous requests)
+- [ ] Extensibility hooks (custom prompt/template and policy controls)
+
+After manual priority confirmation, implement confirmed items incrementally.
 
 ## 🧭 Interactive Controls
 

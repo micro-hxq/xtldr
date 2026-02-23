@@ -41,6 +41,23 @@ func TestRunVersionCommand(t *testing.T) {
 	}
 }
 
+func TestRunRoadmapCommand(t *testing.T) {
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+
+	code := run([]string{"roadmap"}, &out, &errOut)
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d", code)
+	}
+	got := out.String()
+	if !strings.Contains(got, "Capability gaps compared with mature CLI tools") {
+		t.Fatalf("expected roadmap header, got %q", got)
+	}
+	if !strings.Contains(got, "manually confirm priorities") {
+		t.Fatalf("expected manual confirmation note, got %q", got)
+	}
+}
+
 func TestRunVersionFlag(t *testing.T) {
 	var out bytes.Buffer
 	var errOut bytes.Buffer

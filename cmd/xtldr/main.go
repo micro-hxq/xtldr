@@ -34,6 +34,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 		case "help":
 			printHelp(stdout)
 			return 0
+		case "roadmap":
+			printRoadmap(stdout)
+			return 0
 		case "version":
 			printVersion(stdout)
 			return 0
@@ -123,6 +126,7 @@ func printHelp(w io.Writer) {
 	fmt.Fprintln(w, "Usage:")
 	fmt.Fprintln(w, "  xtldr [flags] <request>")
 	fmt.Fprintln(w, "  xtldr help")
+	fmt.Fprintln(w, "  xtldr roadmap")
 	fmt.Fprintln(w, "  xtldr version")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Flags:")
@@ -133,5 +137,18 @@ func printHelp(w io.Writer) {
 	fmt.Fprintln(w, "Examples:")
 	fmt.Fprintln(w, `  xtldr "find large files in current directory"`)
 	fmt.Fprintln(w, `  xtldr -e "show top 10 processes by memory on macOS"`)
+	fmt.Fprintln(w, "  xtldr roadmap")
 	fmt.Fprintln(w, "  xtldr version")
+}
+
+func printRoadmap(w io.Writer) {
+	fmt.Fprintln(w, "📌 Capability gaps compared with mature CLI tools:")
+	fmt.Fprintln(w, "  [ ] Shell-aware output mode (bash/zsh/powershell safe command variants)")
+	fmt.Fprintln(w, "  [ ] Non-interactive mode for CI/scripts (machine-readable output)")
+	fmt.Fprintln(w, "  [ ] Risk guardrails (dangerous command detection + confirmation)")
+	fmt.Fprintln(w, "  [ ] Execution preview (show expected impact before copy/execute)")
+	fmt.Fprintln(w, "  [ ] Session history (store, search, and reuse previous requests)")
+	fmt.Fprintln(w, "  [ ] Extensibility hooks (custom prompt/template and policy controls)")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "✅ Please manually confirm priorities, then implement confirmed items in small increments.")
 }
