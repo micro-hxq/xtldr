@@ -2,9 +2,24 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"strings"
 	"testing"
+
+	"xtldr/internal/model"
 )
+
+type fakeGenerator struct {
+	candidates []model.Candidate
+	err        error
+}
+
+func (f fakeGenerator) Generate(ctx context.Context, request, workingDir string) ([]model.Candidate, error) {
+	_ = ctx
+	_ = request
+	_ = workingDir
+	return f.candidates, f.err
+}
 
 func TestRunHelpCommand(t *testing.T) {
 	var out bytes.Buffer
@@ -19,6 +34,9 @@ func TestRunHelpCommand(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "Hide Command Explanation panel") {
 		t.Fatalf("expected -e flag help to hide explanation panel")
+	}
+	if !strings.Contains(out.String(), "--non-interactive") {
+		t.Fatalf("expected non-interactive flag in help output")
 	}
 }
 
@@ -41,6 +59,23 @@ func TestRunVersionCommand(t *testing.T) {
 	}
 }
 
+func TestRunRoadmapCommand(t *testing.T) {
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+
+	code := run([]string{"roadmap"}, &out, &errOut)
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d", code)
+	}
+	got := out.String()
+	if !strings.Contains(got, "Capability gaps compared with mature CLI tools") {
+		t.Fatalf("expected roadmap header, got %q", got)
+	}
+	if !strings.Contains(got, "manually confirm priorities") {
+		t.Fatalf("expected manual confirmation note, got %q", got)
+	}
+}
+
 func TestRunVersionFlag(t *testing.T) {
 	var out bytes.Buffer
 	var errOut bytes.Buffer
@@ -50,5 +85,45 @@ func TestRunVersionFlag(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "xtldr version") {
 		t.Fatalf("expected version output, got %q", out.String())
+	}
+}
+
+func TestRunNonInteractiveFlag(t *testing.T) {
+	original := newGenerator
+	t.Cleanup(func() { newGenerator = original })
+	newGenerator = func() candidateGenerator {
+		return fakeGenerator{
+			candidates: []model.Candidate{
+				{Command: "ls -la"},
+				{Command: "echo done"},
+			},
+		}
+	}
+
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	code := run([]string{"-n", "list files"}, &out, &errOut)
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d, stderr=%q", code, errOut.String())
+	}
+	if got := out.String(); got != "ls -la\necho done\n" {
+		t.Fatalf("unexpected non-interactive output: %q", got)
+	}
+	if errOut.String() != "" {
+		t.Fatalf("expected empty stderr, got %q", errOut.String())
+	}
+}
+
+func TestPrintCommandsSkipsEmpty(t *testing.T) {
+	var out bytes.Buffer
+	printCommands(&out, []model.Candidate{
+		{Command: "  "},
+		{Command: "pwd"},
+		{Command: ""},
+		{Command: "echo ok"},
+	})
+
+	if got := out.String(); got != "pwd\necho ok\n" {
+		t.Fatalf("unexpected printed commands: %q", got)
 	}
 }

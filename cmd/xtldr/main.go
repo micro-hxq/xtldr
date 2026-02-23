@@ -18,6 +18,12 @@ import (
 	"xtldr/internal/ui"
 )
 
+type candidateGenerator interface {
+	Generate(ctx context.Context, request, workingDir string) ([]model.Candidate, error)
+}
+
+var newGenerator = func() candidateGenerator { return generator.NewCopilot() }
+
 var (
 	Version   = "dev"
 	Commit    = "none"
@@ -34,6 +40,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 		case "help":
 			printHelp(stdout)
 			return 0
+		case "roadmap":
+			printRoadmap(stdout)
+			return 0
 		case "version":
 			printVersion(stdout)
 			return 0
@@ -43,6 +52,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("xtldr", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	hideExplanation := fs.Bool("e", false, "hide Command Explanation panel")
+	nonInteractive := fs.Bool("non-interactive", false, "print generated commands without interactive UI")
+	fs.BoolVar(nonInteractive, "n", false, "print generated commands without interactive UI")
 	showVersion := fs.Bool("version", false, "print version information")
 	fs.BoolVar(showVersion, "v", false, "print version information")
 	fs.Usage = func() { printHelp(stderr) }
@@ -73,12 +84,21 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	generatorClient := generator.NewCopilot()
+	generatorClient := newGenerator()
 	copier := clipboardutil.SystemCopier{}
 	loader := func() ([]model.Candidate, error) {
 		ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 		defer cancel()
 		return generatorClient.Generate(ctx, request, workingDir)
+	}
+	if *nonInteractive {
+		candidates, err := loader()
+		if err != nil {
+			fmt.Fprintf(stderr, "❌ Failed to generate command candidates: %v\n", err)
+			return 1
+		}
+		printCommands(stdout, candidates)
+		return 0
 	}
 
 	program := tea.NewProgram(ui.NewLoadingModel(loader, copier, !*hideExplanation))
@@ -123,15 +143,41 @@ func printHelp(w io.Writer) {
 	fmt.Fprintln(w, "Usage:")
 	fmt.Fprintln(w, "  xtldr [flags] <request>")
 	fmt.Fprintln(w, "  xtldr help")
+	fmt.Fprintln(w, "  xtldr roadmap")
 	fmt.Fprintln(w, "  xtldr version")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Flags:")
 	fmt.Fprintln(w, "  -e          Hide Command Explanation panel")
+	fmt.Fprintln(w, "  -n, --non-interactive   Print generated commands without interactive UI")
 	fmt.Fprintln(w, "  -v          Print version information")
 	fmt.Fprintln(w, "  --version   Print version information")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Examples:")
 	fmt.Fprintln(w, `  xtldr "find large files in current directory"`)
 	fmt.Fprintln(w, `  xtldr -e "show top 10 processes by memory on macOS"`)
+	fmt.Fprintln(w, `  xtldr -n "show top 10 processes by memory on macOS"`)
+	fmt.Fprintln(w, "  xtldr roadmap")
 	fmt.Fprintln(w, "  xtldr version")
+}
+
+func printCommands(w io.Writer, candidates []model.Candidate) {
+	for _, candidate := range candidates {
+		command := strings.TrimSpace(candidate.Command)
+		if command == "" {
+			continue
+		}
+		fmt.Fprintln(w, command)
+	}
+}
+
+func printRoadmap(w io.Writer) {
+	fmt.Fprintln(w, "📌 Capability gaps compared with mature CLI tools:")
+	fmt.Fprintln(w, "  [ ] Shell-aware output mode (bash/zsh/powershell safe command variants)")
+	fmt.Fprintln(w, "  [ ] Non-interactive mode for CI/scripts (machine-readable output)")
+	fmt.Fprintln(w, "  [ ] Risk guardrails (dangerous command detection + confirmation)")
+	fmt.Fprintln(w, "  [ ] Execution preview (show expected impact before copy/execute)")
+	fmt.Fprintln(w, "  [ ] Session history (store, search, and reuse previous requests)")
+	fmt.Fprintln(w, "  [ ] Extensibility hooks (custom prompt/template and policy controls)")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "✅ Please manually confirm priorities, then implement confirmed items in small increments.")
 }
