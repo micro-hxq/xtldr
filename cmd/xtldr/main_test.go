@@ -14,7 +14,10 @@ type fakeGenerator struct {
 	err        error
 }
 
-func (f fakeGenerator) Generate(_ context.Context, _, _ string) ([]model.Candidate, error) {
+func (f fakeGenerator) Generate(ctx context.Context, request, workingDir string) ([]model.Candidate, error) {
+	_ = ctx
+	_ = request
+	_ = workingDir
 	return f.candidates, f.err
 }
 
@@ -86,9 +89,9 @@ func TestRunVersionFlag(t *testing.T) {
 }
 
 func TestRunNonInteractiveFlag(t *testing.T) {
-	original := newGeneratorClient
-	t.Cleanup(func() { newGeneratorClient = original })
-	newGeneratorClient = func() candidateGenerator {
+	original := newGenerator
+	t.Cleanup(func() { newGenerator = original })
+	newGenerator = func() candidateGenerator {
 		return fakeGenerator{
 			candidates: []model.Candidate{
 				{Command: "ls -la"},
@@ -108,5 +111,19 @@ func TestRunNonInteractiveFlag(t *testing.T) {
 	}
 	if errOut.String() != "" {
 		t.Fatalf("expected empty stderr, got %q", errOut.String())
+	}
+}
+
+func TestPrintCommandsSkipsEmpty(t *testing.T) {
+	var out bytes.Buffer
+	printCommands(&out, []model.Candidate{
+		{Command: "  "},
+		{Command: "pwd"},
+		{Command: ""},
+		{Command: "echo ok"},
+	})
+
+	if got := out.String(); got != "pwd\necho ok\n" {
+		t.Fatalf("unexpected printed commands: %q", got)
 	}
 }

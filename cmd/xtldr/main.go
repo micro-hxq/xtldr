@@ -22,7 +22,7 @@ type candidateGenerator interface {
 	Generate(ctx context.Context, request, workingDir string) ([]model.Candidate, error)
 }
 
-var newGeneratorClient = func() candidateGenerator { return generator.NewCopilot() }
+var newGenerator = func() candidateGenerator { return generator.NewCopilot() }
 
 var (
 	Version   = "dev"
@@ -84,7 +84,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	generatorClient := newGeneratorClient()
+	generatorClient := newGenerator()
 	copier := clipboardutil.SystemCopier{}
 	loader := func() ([]model.Candidate, error) {
 		ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
@@ -148,8 +148,7 @@ func printHelp(w io.Writer) {
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Flags:")
 	fmt.Fprintln(w, "  -e          Hide Command Explanation panel")
-	fmt.Fprintln(w, "  -n          Print generated commands without interactive UI")
-	fmt.Fprintln(w, "  --non-interactive   Print generated commands without interactive UI")
+	fmt.Fprintln(w, "  -n, --non-interactive   Print generated commands without interactive UI")
 	fmt.Fprintln(w, "  -v          Print version information")
 	fmt.Fprintln(w, "  --version   Print version information")
 	fmt.Fprintln(w)
