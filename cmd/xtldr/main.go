@@ -89,6 +89,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 	generatorClient := newGenerator()
 	copier := clipboardutil.SystemCopier{}
 	currentRequest := request
+	var stdinReader *bufio.Reader
+	if *iterative {
+		stdinReader = bufio.NewReader(os.Stdin)
+	}
 	loader := func(req string) func() ([]model.Candidate, error) {
 		return func() ([]model.Candidate, error) {
 			ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
@@ -127,7 +131,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 			return 0
 		}
 
-		refinement, ok := promptRefinement(stderr)
+		refinement, ok := promptRefinement(stdinReader, stderr)
 		if !ok {
 			return 0
 		}
@@ -177,9 +181,8 @@ func printHelp(w io.Writer) {
 	fmt.Fprintln(w, "  xtldr version")
 }
 
-func promptRefinement(w io.Writer) (string, bool) {
+func promptRefinement(reader *bufio.Reader, w io.Writer) (string, bool) {
 	fmt.Fprintln(w, "💬 Multi-turn mode: add extra instructions to refine the next round (empty/q to quit):")
-	reader := bufio.NewReader(os.Stdin)
 	line, err := reader.ReadString('\n')
 	if err != nil && !errors.Is(err, io.EOF) {
 		return "", false
