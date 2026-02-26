@@ -20,6 +20,7 @@
 - 📋 Press `Enter` to output the selected command to stdout and auto-copy it
 - 🧠 Show a rich explanation panel with parameter meanings by default
 - 🙈 Use `-e` to hide the explanation panel
+- 🔁 Use `-i` for iterative multi-turn refinement when results need corrections
 - ⏳ Animated loading state while waiting for Copilot results
 
 ## 🚀 Usage
@@ -34,6 +35,7 @@ xtldr version
 ### Flags
 
 - `-e` Hide the **Command Explanation** panel
+- `-i` Enable iterative multi-turn refinement
 - `-n`, `--non-interactive` Print generated commands directly (for scripts/CI)
 - `-v`, `--version` Print version information
 
@@ -43,6 +45,7 @@ xtldr version
 xtldr "find large files in current directory"
 xtldr "show top 10 processes by memory on macOS"
 xtldr -e "show top 10 processes by memory on macOS"
+xtldr -i "show top 10 processes by memory on macOS"
 xtldr -n "show top 10 processes by memory on macOS"
 xtldr help
 xtldr roadmap

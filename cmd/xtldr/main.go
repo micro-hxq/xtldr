@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"flag"
@@ -52,6 +53,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("xtldr", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	hideExplanation := fs.Bool("e", false, "hide Command Explanation panel")
+	iterative := fs.Bool("i", false, "enable iterative multi-turn refinement")
 	nonInteractive := fs.Bool("non-interactive", false, "print generated commands without interactive UI")
 	fs.BoolVar(nonInteractive, "n", false, "print generated commands without interactive UI")
 	showVersion := fs.Bool("version", false, "print version information")
@@ -86,13 +88,16 @@ func run(args []string, stdout, stderr io.Writer) int {
 
 	generatorClient := newGenerator()
 	copier := clipboardutil.SystemCopier{}
-	loader := func() ([]model.Candidate, error) {
-		ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
-		defer cancel()
-		return generatorClient.Generate(ctx, request, workingDir)
+	currentRequest := request
+	loader := func(req string) func() ([]model.Candidate, error) {
+		return func() ([]model.Candidate, error) {
+			ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+			defer cancel()
+			return generatorClient.Generate(ctx, req, workingDir)
+		}
 	}
 	if *nonInteractive {
-		candidates, err := loader()
+		candidates, err := loader(currentRequest)()
 		if err != nil {
 			fmt.Fprintf(stderr, "❌ Failed to generate command candidates: %v\n", err)
 			return 1
@@ -101,23 +106,33 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 
-	program := tea.NewProgram(ui.NewLoadingModel(loader, copier, !*hideExplanation))
-	finalModel, err := program.Run()
-	if err != nil {
-		fmt.Fprintf(stderr, "❌ Failed to run interactive UI: %v\n", err)
-		return 1
-	}
-
-	if selected := selectedCommand(finalModel); selected != "" {
-		fmt.Fprintln(stdout, selected)
-		if err := copier.Copy(selected); err != nil {
-			fmt.Fprintf(stderr, "❌ Failed to copy selected command: %v\n", err)
+	for {
+		program := tea.NewProgram(ui.NewLoadingModel(loader(currentRequest), copier, !*hideExplanation))
+		finalModel, err := program.Run()
+		if err != nil {
+			fmt.Fprintf(stderr, "❌ Failed to run interactive UI: %v\n", err)
 			return 1
 		}
-		fmt.Fprintln(stderr, "📋 Command copied to clipboard.")
-	}
 
-	return 0
+		if selected := selectedCommand(finalModel); selected != "" {
+			fmt.Fprintln(stdout, selected)
+			if err := copier.Copy(selected); err != nil {
+				fmt.Fprintf(stderr, "❌ Failed to copy selected command: %v\n", err)
+				return 1
+			}
+			fmt.Fprintln(stderr, "📋 Command copied to clipboard.")
+			return 0
+		}
+		if !*iterative {
+			return 0
+		}
+
+		refinement, ok := promptRefinement(stderr)
+		if !ok {
+			return 0
+		}
+		currentRequest = appendRefinement(currentRequest, refinement)
+	}
 }
 
 func selectedCommand(finalModel tea.Model) string {
@@ -148,6 +163,7 @@ func printHelp(w io.Writer) {
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Flags:")
 	fmt.Fprintln(w, "  -e          Hide Command Explanation panel")
+	fmt.Fprintln(w, "  -i          Enable iterative multi-turn refinement")
 	fmt.Fprintln(w, "  -n, --non-interactive   Print generated commands without interactive UI")
 	fmt.Fprintln(w, "  -v          Print version information")
 	fmt.Fprintln(w, "  --version   Print version information")
@@ -155,9 +171,28 @@ func printHelp(w io.Writer) {
 	fmt.Fprintln(w, "Examples:")
 	fmt.Fprintln(w, `  xtldr "find large files in current directory"`)
 	fmt.Fprintln(w, `  xtldr -e "show top 10 processes by memory on macOS"`)
+	fmt.Fprintln(w, `  xtldr -i "show top 10 processes by memory on macOS"`)
 	fmt.Fprintln(w, `  xtldr -n "show top 10 processes by memory on macOS"`)
 	fmt.Fprintln(w, "  xtldr roadmap")
 	fmt.Fprintln(w, "  xtldr version")
+}
+
+func promptRefinement(w io.Writer) (string, bool) {
+	fmt.Fprintln(w, "💬 Multi-turn mode: add extra instructions to refine the next round (empty/q to quit):")
+	reader := bufio.NewReader(os.Stdin)
+	line, err := reader.ReadString('\n')
+	if err != nil && !errors.Is(err, io.EOF) {
+		return "", false
+	}
+	refinement := strings.TrimSpace(line)
+	if refinement == "" || strings.EqualFold(refinement, "q") || strings.EqualFold(refinement, "quit") {
+		return "", false
+	}
+	return refinement, true
+}
+
+func appendRefinement(request, refinement string) string {
+	return strings.TrimSpace(request) + "\nRefinement: " + strings.TrimSpace(refinement)
 }
 
 func printCommands(w io.Writer, candidates []model.Candidate) {

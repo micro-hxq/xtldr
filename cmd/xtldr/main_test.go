@@ -38,6 +38,9 @@ func TestRunHelpCommand(t *testing.T) {
 	if !strings.Contains(out.String(), "--non-interactive") {
 		t.Fatalf("expected non-interactive flag in help output")
 	}
+	if !strings.Contains(out.String(), "Enable iterative multi-turn refinement") {
+		t.Fatalf("expected -i flag help output")
+	}
 }
 
 func TestRunVersionCommand(t *testing.T) {
@@ -125,5 +128,13 @@ func TestPrintCommandsSkipsEmpty(t *testing.T) {
 
 	if got := out.String(); got != "pwd\necho ok\n" {
 		t.Fatalf("unexpected printed commands: %q", got)
+	}
+}
+
+func TestAppendRefinement(t *testing.T) {
+	got := appendRefinement("list files", "only include hidden files")
+	want := "list files\nRefinement: only include hidden files"
+	if got != want {
+		t.Fatalf("unexpected refinement request: got %q want %q", got, want)
 	}
 }
