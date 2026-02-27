@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
@@ -14,11 +15,21 @@ type fakeGenerator struct {
 	err        error
 }
 
+type fakeCopier struct {
+	err    error
+	copied string
+}
+
 func (f fakeGenerator) Generate(ctx context.Context, request, workingDir string) ([]model.Candidate, error) {
 	_ = ctx
 	_ = request
 	_ = workingDir
 	return f.candidates, f.err
+}
+
+func (f *fakeCopier) Copy(text string) error {
+	f.copied = text
+	return f.err
 }
 
 func TestRunHelpCommand(t *testing.T) {
@@ -155,5 +166,41 @@ func TestAppendRefinement(t *testing.T) {
 	want := "list files\nRefinement: only include hidden files"
 	if got != want {
 		t.Fatalf("unexpected refinement request: got %q want %q", got, want)
+	}
+}
+
+func TestOutputSelectedCommand(t *testing.T) {
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	copier := &fakeCopier{}
+
+	if err := outputSelectedCommand(&out, &errOut, copier, "git status"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got := out.String(); got != "git status\n" {
+		t.Fatalf("unexpected stdout: %q", got)
+	}
+	if !strings.Contains(errOut.String(), "Command copied to clipboard") {
+		t.Fatalf("expected copy success message, got %q", errOut.String())
+	}
+	if copier.copied != "git status" {
+		t.Fatalf("expected copied command, got %q", copier.copied)
+	}
+}
+
+func TestOutputSelectedCommandCopyFailure(t *testing.T) {
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	copier := &fakeCopier{err: errors.New("copy failed")}
+
+	err := outputSelectedCommand(&out, &errOut, copier, "pwd")
+	if err == nil {
+		t.Fatalf("expected error when copy fails")
+	}
+	if got := out.String(); got != "pwd\n" {
+		t.Fatalf("unexpected stdout: %q", got)
+	}
+	if !strings.Contains(errOut.String(), "Failed to copy selected command") {
+		t.Fatalf("expected copy failure message, got %q", errOut.String())
 	}
 }

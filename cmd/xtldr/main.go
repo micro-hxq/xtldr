@@ -285,7 +285,7 @@ func selectedHistorySession(finalModel tea.Model) history.Session {
 	}
 }
 
-func outputSelectedCommand(stdout, stderr io.Writer, copier clipboardutil.SystemCopier, command string) error {
+func outputSelectedCommand(stdout, stderr io.Writer, copier interface{ Copy(string) error }, command string) error {
 	command = strings.TrimSpace(command)
 	if command == "" {
 		return nil

@@ -83,6 +83,9 @@ func TestAppendDeduplicatesLatest(t *testing.T) {
 	if sessions[0].Request != "check repo" {
 		t.Fatalf("expected latest record to overwrite by command, got %q", sessions[0].Request)
 	}
+	if sessions[0].Command != "git status" {
+		t.Fatalf("expected deduped command to remain git status, got %q", sessions[0].Command)
+	}
 }
 
 func TestListMissingFile(t *testing.T) {
