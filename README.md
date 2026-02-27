@@ -21,7 +21,7 @@
 - 🧠 Show a rich explanation panel with parameter meanings by default
 - 🙈 Use `-e` to hide the explanation panel
 - 🔁 Use `-i` for iterative multi-turn refinement when results need corrections
-- 🕘 Use `xtldr history [query]` to browse/search/reuse previous requests
+- 🕘 Use `xtldr history [query]` to browse/search/reuse previously selected commands
 - ⏳ Animated loading state while waiting for Copilot results
 
 ## 🚀 Usage
@@ -77,7 +77,7 @@ Current checklist:
 - [ ] Non-interactive mode for CI/scripts (machine-readable output)
 - [ ] Risk guardrails (dangerous command detection + confirmation)
 - [ ] Execution preview (show expected impact before copy/execute)
-- [x] Session history (store, search, and reuse previous requests)
+- [x] Session history (store, search, and reuse selected commands)
 - [ ] Extensibility hooks (custom prompt/template and policy controls)
 
 After manual priority confirmation, implement confirmed items incrementally.

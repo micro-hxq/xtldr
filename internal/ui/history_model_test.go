@@ -12,8 +12,8 @@ import (
 
 func TestHistoryModelSelectsRequest(t *testing.T) {
 	sessions := []history.Session{
-		{Request: "find large files", CreatedAt: time.Now()},
-		{Request: "git status", CreatedAt: time.Now()},
+		{Request: "find large files", Command: "find . -size +1G", CreatedAt: time.Now()},
+		{Request: "git status", Command: "git status", CreatedAt: time.Now()},
 	}
 	m := NewHistoryModel(sessions, "")
 
@@ -24,6 +24,9 @@ func TestHistoryModelSelectsRequest(t *testing.T) {
 
 	if updated.SelectedRequest() != "git status" {
 		t.Fatalf("expected selected request git status, got %q", updated.SelectedRequest())
+	}
+	if updated.SelectedSession().Command != "git status" {
+		t.Fatalf("expected selected command git status, got %q", updated.SelectedSession().Command)
 	}
 }
 

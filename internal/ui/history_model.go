@@ -15,7 +15,7 @@ type HistoryModel struct {
 	allSessions []history.Session
 	sessions    []history.Session
 	selected    int
-	chosen      string
+	chosen      history.Session
 	query       string
 	searching   bool
 }
@@ -79,7 +79,7 @@ func (m HistoryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(m.sessions) == 0 {
 				return m, tea.Quit
 			}
-			m.chosen = m.sessions[m.selected].Request
+			m.chosen = m.sessions[m.selected]
 			return m, tea.Quit
 		}
 	}
@@ -149,6 +149,10 @@ func (m HistoryModel) View() string {
 }
 
 func (m HistoryModel) SelectedRequest() string {
+	return m.chosen.Request
+}
+
+func (m HistoryModel) SelectedSession() history.Session {
 	return m.chosen
 }
 
