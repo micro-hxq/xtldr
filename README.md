@@ -21,6 +21,7 @@
 - 🧠 Show a rich explanation panel with parameter meanings by default
 - 🙈 Use `-e` to hide the explanation panel
 - 🔁 Use `-i` for iterative multi-turn refinement when results need corrections
+- 🕘 Use `xtldr history [query]` to browse/search/reuse previous requests
 - ⏳ Animated loading state while waiting for Copilot results
 
 ## 🚀 Usage
@@ -29,6 +30,7 @@
 xtldr [flags] <request>
 xtldr help
 xtldr roadmap
+xtldr history [query]
 xtldr version
 ```
 
@@ -47,6 +49,8 @@ xtldr "show top 10 processes by memory on macOS"
 xtldr -e "show top 10 processes by memory on macOS"
 xtldr -i "show top 10 processes by memory on macOS"
 xtldr -n "show top 10 processes by memory on macOS"
+xtldr history
+xtldr history "git"
 xtldr help
 xtldr roadmap
 xtldr version
@@ -56,6 +60,7 @@ xtldr version
 
 - `xtldr help`: Show complete CLI help
 - `xtldr roadmap`: Show capability gap checklist to confirm before implementation
+- `xtldr history [query]`: Open interactive session history (supports search query)
 - `xtldr version`: Show version, commit, and build date
 
 ## 🧩 Capability Gap Checklist (vs mature CLI tools)
@@ -72,7 +77,7 @@ Current checklist:
 - [ ] Non-interactive mode for CI/scripts (machine-readable output)
 - [ ] Risk guardrails (dangerous command detection + confirmation)
 - [ ] Execution preview (show expected impact before copy/execute)
-- [ ] Session history (store, search, and reuse previous requests)
+- [x] Session history (store, search, and reuse previous requests)
 - [ ] Extensibility hooks (custom prompt/template and policy controls)
 
 After manual priority confirmation, implement confirmed items incrementally.
@@ -82,6 +87,7 @@ After manual priority confirmation, implement confirmed items incrementally.
 - `↑/↓` or `j/k`: Move selection
 - `Enter`: Print selected command to stdout + copy to clipboard
 - `c`: Copy selected command
+- In `xtldr history`: press `/` to start in-session search and type to filter
 - `q` or `Ctrl+C`: Quit
 
 ## 🛠 Development
