@@ -41,6 +41,9 @@ func TestRunHelpCommand(t *testing.T) {
 	if !strings.Contains(out.String(), "Enable iterative multi-turn refinement") {
 		t.Fatalf("expected -i flag help output")
 	}
+	if !strings.Contains(out.String(), "xtldr history [query]") {
+		t.Fatalf("expected history command in help output")
+	}
 }
 
 func TestRunVersionCommand(t *testing.T) {
@@ -76,6 +79,22 @@ func TestRunRoadmapCommand(t *testing.T) {
 	}
 	if !strings.Contains(got, "manually confirm priorities") {
 		t.Fatalf("expected manual confirmation note, got %q", got)
+	}
+	if !strings.Contains(got, "[x] Session history") {
+		t.Fatalf("expected completed session history item, got %q", got)
+	}
+}
+
+func TestRunHistoryCommandWithNoSessions(t *testing.T) {
+	t.Setenv("XTLDR_HISTORY_FILE", t.TempDir()+"/history.jsonl")
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	code := run([]string{"history"}, &out, &errOut)
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d, stderr=%q", code, errOut.String())
+	}
+	if !strings.Contains(out.String(), "No session history yet") {
+		t.Fatalf("expected empty history message, got %q", out.String())
 	}
 }
 

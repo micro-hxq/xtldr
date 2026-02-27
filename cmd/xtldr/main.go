@@ -15,6 +15,7 @@ import (
 
 	"xtldr/internal/clipboardutil"
 	"xtldr/internal/generator"
+	"xtldr/internal/history"
 	"xtldr/internal/model"
 	"xtldr/internal/ui"
 )
@@ -44,6 +45,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		case "roadmap":
 			printRoadmap(stdout)
 			return 0
+		case "history":
+			return runHistory(args[1:], stdout, stderr)
 		case "version":
 			printVersion(stdout)
 			return 0
@@ -111,6 +114,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 
 	for {
+		storeSessionHistory(currentRequest, workingDir)
 		program := tea.NewProgram(ui.NewLoadingModel(loader(currentRequest), copier, !*hideExplanation))
 		finalModel, err := program.Run()
 		if err != nil {
@@ -163,6 +167,7 @@ func printHelp(w io.Writer) {
 	fmt.Fprintln(w, "  xtldr [flags] <request>")
 	fmt.Fprintln(w, "  xtldr help")
 	fmt.Fprintln(w, "  xtldr roadmap")
+	fmt.Fprintln(w, "  xtldr history [query]")
 	fmt.Fprintln(w, "  xtldr version")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Flags:")
@@ -177,6 +182,8 @@ func printHelp(w io.Writer) {
 	fmt.Fprintln(w, `  xtldr -e "show top 10 processes by memory on macOS"`)
 	fmt.Fprintln(w, `  xtldr -i "show top 10 processes by memory on macOS"`)
 	fmt.Fprintln(w, `  xtldr -n "show top 10 processes by memory on macOS"`)
+	fmt.Fprintln(w, "  xtldr history")
+	fmt.Fprintln(w, `  xtldr history "git"`)
 	fmt.Fprintln(w, "  xtldr roadmap")
 	fmt.Fprintln(w, "  xtldr version")
 }
@@ -214,8 +221,61 @@ func printRoadmap(w io.Writer) {
 	fmt.Fprintln(w, "  [ ] Non-interactive mode for CI/scripts (machine-readable output)")
 	fmt.Fprintln(w, "  [ ] Risk guardrails (dangerous command detection + confirmation)")
 	fmt.Fprintln(w, "  [ ] Execution preview (show expected impact before copy/execute)")
-	fmt.Fprintln(w, "  [ ] Session history (store, search, and reuse previous requests)")
+	fmt.Fprintln(w, "  [x] Session history (store, search, and reuse previous requests)")
 	fmt.Fprintln(w, "  [ ] Extensibility hooks (custom prompt/template and policy controls)")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "✅ Please manually confirm priorities, then implement confirmed items in small increments.")
+}
+
+func storeSessionHistory(request, workingDir string) {
+	store, err := history.NewDefaultStore()
+	if err != nil {
+		return
+	}
+	_ = store.Append(request, workingDir)
+}
+
+func runHistory(args []string, stdout, stderr io.Writer) int {
+	store, err := history.NewDefaultStore()
+	if err != nil {
+		fmt.Fprintf(stderr, "❌ Failed to initialize session history: %v\n", err)
+		return 1
+	}
+	sessions, err := store.List()
+	if err != nil {
+		fmt.Fprintf(stderr, "❌ Failed to load session history: %v\n", err)
+		return 1
+	}
+	query := strings.TrimSpace(strings.Join(args, " "))
+	sessions = history.Search(sessions, query)
+	if len(sessions) == 0 {
+		if query == "" {
+			fmt.Fprintln(stdout, "🕘 No session history yet. Run xtldr with a request first.")
+		} else {
+			fmt.Fprintf(stdout, "🕘 No history matched query %q.\n", query)
+		}
+		return 0
+	}
+	program := tea.NewProgram(ui.NewHistoryModel(sessions, query))
+	finalModel, err := program.Run()
+	if err != nil {
+		fmt.Fprintf(stderr, "❌ Failed to run history UI: %v\n", err)
+		return 1
+	}
+	selected := selectedHistoryRequest(finalModel)
+	if selected == "" {
+		return 0
+	}
+	return run([]string{selected}, stdout, stderr)
+}
+
+func selectedHistoryRequest(finalModel tea.Model) string {
+	switch m := finalModel.(type) {
+	case ui.HistoryModel:
+		return strings.TrimSpace(m.SelectedRequest())
+	case *ui.HistoryModel:
+		return strings.TrimSpace(m.SelectedRequest())
+	default:
+		return ""
+	}
 }
