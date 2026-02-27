@@ -12,14 +12,22 @@ import (
 )
 
 type HistoryModel struct {
-	sessions []history.Session
-	selected int
-	chosen   string
-	query    string
+	allSessions []history.Session
+	sessions    []history.Session
+	selected    int
+	chosen      string
+	query       string
+	searching   bool
 }
 
 func NewHistoryModel(sessions []history.Session, query string) HistoryModel {
-	return HistoryModel{sessions: sessions, query: strings.TrimSpace(query)}
+	q := strings.TrimSpace(query)
+	m := HistoryModel{
+		allSessions: sessions,
+		query:       q,
+	}
+	m.applyFilter()
+	return m
 }
 
 func (m HistoryModel) Init() tea.Cmd { return nil }
@@ -27,9 +35,36 @@ func (m HistoryModel) Init() tea.Cmd { return nil }
 func (m HistoryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		if m.searching {
+			switch msg.String() {
+			case "ctrl+c", "q":
+				return m, tea.Quit
+			case "esc":
+				m.searching = false
+				return m, nil
+			case "backspace":
+				if len(m.query) > 0 {
+					queryRunes := []rune(m.query)
+					m.query = string(queryRunes[:len(queryRunes)-1])
+					m.applyFilter()
+				}
+				return m, nil
+			case "enter":
+				m.searching = false
+				return m, nil
+			}
+			if msg.Type == tea.KeyRunes {
+				m.query += string(msg.Runes)
+				m.applyFilter()
+			}
+			return m, nil
+		}
 		switch msg.String() {
 		case "ctrl+c", "q":
 			return m, tea.Quit
+		case "/":
+			m.searching = true
+			return m, nil
 		case "up", "k":
 			if len(m.sessions) == 0 {
 				return m, nil
@@ -70,6 +105,8 @@ func (m HistoryModel) View() string {
 	}
 	if m.query != "" {
 		lines = append(lines, "", metaStyle.Render("🔎 Search: "+m.query))
+	} else if m.searching {
+		lines = append(lines, "", metaStyle.Render("🔎 Search:"))
 	}
 	lines = append(lines, "")
 
@@ -96,7 +133,11 @@ func (m HistoryModel) View() string {
 			lines = append(lines, "")
 		}
 	}
-	lines = append(lines, hintStyle.Render("💡 Tip: use ↑/↓ or j/k to navigate, Enter to reuse, q to quit."))
+	if m.searching {
+		lines = append(lines, hintStyle.Render("💡 Search mode: type to filter, Backspace delete, Enter/Esc finish search."))
+	} else {
+		lines = append(lines, hintStyle.Render("💡 Tip: / search, ↑/↓ or j/k navigate, Enter reuse, q quit."))
+	}
 
 	box := lipgloss.NewStyle().
 		Border(lipgloss.DoubleBorder()).
@@ -109,4 +150,15 @@ func (m HistoryModel) View() string {
 
 func (m HistoryModel) SelectedRequest() string {
 	return m.chosen
+}
+
+func (m *HistoryModel) applyFilter() {
+	m.sessions = history.Search(m.allSessions, m.query)
+	if len(m.sessions) == 0 {
+		m.selected = 0
+		return
+	}
+	if m.selected >= len(m.sessions) || m.selected < 0 {
+		m.selected = 0
+	}
 }

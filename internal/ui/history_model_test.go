@@ -37,3 +37,52 @@ func TestHistoryViewContainsHeaderAndQuery(t *testing.T) {
 		t.Fatalf("expected query in history view")
 	}
 }
+
+func TestHistoryInteractiveSearchFiltersSessions(t *testing.T) {
+	m := NewHistoryModel([]history.Session{
+		{Request: "git status"},
+		{Request: "find large files"},
+	}, "")
+
+	next, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
+	updated := next.(HistoryModel)
+	next, _ = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}})
+	updated = next.(HistoryModel)
+	next, _ = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'i'}})
+	updated = next.(HistoryModel)
+	next, _ = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'t'}})
+	updated = next.(HistoryModel)
+
+	view := updated.View()
+	if !strings.Contains(view, "Search: git") {
+		t.Fatalf("expected active search query in view")
+	}
+	if !strings.Contains(view, "git status") {
+		t.Fatalf("expected git session in filtered view")
+	}
+	if strings.Contains(view, "find large files") {
+		t.Fatalf("did not expect non-matching session in filtered view")
+	}
+}
+
+func TestHistorySearchModeEnterDoesNotSelect(t *testing.T) {
+	m := NewHistoryModel([]history.Session{
+		{Request: "git status"},
+		{Request: "go test ./..."},
+	}, "")
+
+	next, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
+	updated := next.(HistoryModel)
+	next, _ = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}})
+	updated = next.(HistoryModel)
+	next, _ = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'i'}})
+	updated = next.(HistoryModel)
+	next, _ = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'t'}})
+	updated = next.(HistoryModel)
+	next, _ = updated.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated = next.(HistoryModel)
+
+	if updated.SelectedRequest() != "" {
+		t.Fatalf("expected no request selected when pressing enter in search mode")
+	}
+}

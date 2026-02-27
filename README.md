@@ -87,6 +87,7 @@ After manual priority confirmation, implement confirmed items incrementally.
 - `↑/↓` or `j/k`: Move selection
 - `Enter`: Print selected command to stdout + copy to clipboard
 - `c`: Copy selected command
+- In `xtldr history`: press `/` to start in-session search and type to filter
 - `q` or `Ctrl+C`: Quit
 
 ## 🛠 Development
