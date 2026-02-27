@@ -57,7 +57,7 @@ func (s *Store) Append(request, command, workingDir string) error {
 	}
 	filtered := make([]Session, 0, len(sessions))
 	for _, existing := range sessions {
-		if strings.TrimSpace(existing.Command) == entry.Command {
+		if existing.Command == entry.Command {
 			continue
 		}
 		filtered = append(filtered, existing)
@@ -90,7 +90,9 @@ func (s *Store) List() ([]Session, error) {
 		if err := json.Unmarshal([]byte(line), &entry); err != nil {
 			continue
 		}
-		if strings.TrimSpace(entry.Request) == "" {
+		entry.Request = strings.TrimSpace(entry.Request)
+		entry.Command = strings.TrimSpace(entry.Command)
+		if entry.Request == "" {
 			continue
 		}
 		sessions = append(sessions, entry)
