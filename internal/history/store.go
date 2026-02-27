@@ -17,6 +17,7 @@ const (
 
 type Session struct {
 	Request    string    `json:"request"`
+	Command    string    `json:"command,omitempty"`
 	WorkingDir string    `json:"working_dir,omitempty"`
 	CreatedAt  time.Time `json:"created_at"`
 }
@@ -38,9 +39,10 @@ func NewDefaultStore() (*Store, error) {
 	return &Store{path: path, limit: defaultLimit}, nil
 }
 
-func (s *Store) Append(request, workingDir string) error {
+func (s *Store) Append(request, command, workingDir string) error {
 	request = strings.TrimSpace(request)
-	if request == "" {
+	command = strings.TrimSpace(command)
+	if request == "" || command == "" {
 		return nil
 	}
 	sessions, err := s.List()
@@ -49,12 +51,13 @@ func (s *Store) Append(request, workingDir string) error {
 	}
 	entry := Session{
 		Request:    request,
+		Command:    command,
 		WorkingDir: strings.TrimSpace(workingDir),
 		CreatedAt:  time.Now().UTC(),
 	}
 	filtered := make([]Session, 0, len(sessions))
 	for _, existing := range sessions {
-		if existing.Request == entry.Request {
+		if strings.TrimSpace(existing.Command) == entry.Command {
 			continue
 		}
 		filtered = append(filtered, existing)

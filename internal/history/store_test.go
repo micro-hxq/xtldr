@@ -11,10 +11,10 @@ func TestAppendAndList(t *testing.T) {
 	path := filepath.Join(tmp, "history.jsonl")
 	store := &Store{path: path, limit: 200}
 
-	if err := store.Append("list files", "/tmp/project"); err != nil {
+	if err := store.Append("list files", "ls", "/tmp/project"); err != nil {
 		t.Fatalf("append failed: %v", err)
 	}
-	if err := store.Append("show git status", "/tmp/project"); err != nil {
+	if err := store.Append("show git status", "git status", "/tmp/project"); err != nil {
 		t.Fatalf("append failed: %v", err)
 	}
 
@@ -27,6 +27,9 @@ func TestAppendAndList(t *testing.T) {
 	}
 	if sessions[0].Request != "show git status" {
 		t.Fatalf("expected latest session first, got %q", sessions[0].Request)
+	}
+	if sessions[0].Command != "git status" {
+		t.Fatalf("expected command to be stored, got %q", sessions[0].Command)
 	}
 }
 
@@ -60,13 +63,13 @@ func TestAppendDeduplicatesLatest(t *testing.T) {
 	path := filepath.Join(tmp, "history.jsonl")
 	store := &Store{path: path, limit: 200}
 
-	if err := store.Append("git status", "/repo"); err != nil {
+	if err := store.Append("git status", "git status", "/repo"); err != nil {
 		t.Fatalf("append failed: %v", err)
 	}
-	if err := store.Append("ls -la", "/repo"); err != nil {
+	if err := store.Append("show files", "ls -la", "/repo"); err != nil {
 		t.Fatalf("append failed: %v", err)
 	}
-	if err := store.Append("git status", "/repo"); err != nil {
+	if err := store.Append("check repo", "git status", "/repo"); err != nil {
 		t.Fatalf("append failed: %v", err)
 	}
 
@@ -77,8 +80,8 @@ func TestAppendDeduplicatesLatest(t *testing.T) {
 	if len(sessions) != 2 {
 		t.Fatalf("expected 2 unique sessions, got %d", len(sessions))
 	}
-	if sessions[0].Request != "git status" {
-		t.Fatalf("expected deduplicated request moved to top, got %q", sessions[0].Request)
+	if sessions[0].Request != "check repo" {
+		t.Fatalf("expected latest record to overwrite by command, got %q", sessions[0].Request)
 	}
 }
 
@@ -95,10 +98,20 @@ func TestListMissingFile(t *testing.T) {
 
 func TestAppendIgnoresEmptyRequest(t *testing.T) {
 	store := &Store{path: filepath.Join(t.TempDir(), "history.jsonl"), limit: 200}
-	if err := store.Append("   ", "/tmp"); err != nil {
+	if err := store.Append("   ", "pwd", "/tmp"); err != nil {
 		t.Fatalf("append failed: %v", err)
 	}
 	if _, err := os.Stat(store.path); !os.IsNotExist(err) {
 		t.Fatalf("expected history file not created for empty request")
+	}
+}
+
+func TestAppendIgnoresEmptyCommand(t *testing.T) {
+	store := &Store{path: filepath.Join(t.TempDir(), "history.jsonl"), limit: 200}
+	if err := store.Append("show pwd", "   ", "/tmp"); err != nil {
+		t.Fatalf("append failed: %v", err)
+	}
+	if _, err := os.Stat(store.path); !os.IsNotExist(err) {
+		t.Fatalf("expected history file not created for empty command")
 	}
 }

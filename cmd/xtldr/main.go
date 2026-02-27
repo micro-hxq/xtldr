@@ -114,7 +114,6 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 
 	for {
-		storeSessionHistory(currentRequest, workingDir)
 		program := tea.NewProgram(ui.NewLoadingModel(loader(currentRequest), copier, !*hideExplanation))
 		finalModel, err := program.Run()
 		if err != nil {
@@ -123,12 +122,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 		}
 
 		if selected := selectedCommand(finalModel); selected != "" {
-			fmt.Fprintln(stdout, selected)
-			if err := copier.Copy(selected); err != nil {
-				fmt.Fprintf(stderr, "❌ Failed to copy selected command: %v\n", err)
+			storeSessionHistory(currentRequest, selected, workingDir)
+			if err := outputSelectedCommand(stdout, stderr, copier, selected); err != nil {
 				return 1
 			}
-			fmt.Fprintln(stderr, "📋 Command copied to clipboard.")
 			return 0
 		}
 		if !*iterative {
@@ -221,18 +218,18 @@ func printRoadmap(w io.Writer) {
 	fmt.Fprintln(w, "  [ ] Non-interactive mode for CI/scripts (machine-readable output)")
 	fmt.Fprintln(w, "  [ ] Risk guardrails (dangerous command detection + confirmation)")
 	fmt.Fprintln(w, "  [ ] Execution preview (show expected impact before copy/execute)")
-	fmt.Fprintln(w, "  [x] Session history (store, search, and reuse previous requests)")
+	fmt.Fprintln(w, "  [x] Session history (store, search, and reuse selected commands)")
 	fmt.Fprintln(w, "  [ ] Extensibility hooks (custom prompt/template and policy controls)")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "✅ Please manually confirm priorities, then implement confirmed items in small increments.")
 }
 
-func storeSessionHistory(request, workingDir string) {
+func storeSessionHistory(request, command, workingDir string) {
 	store, err := history.NewDefaultStore()
 	if err != nil {
 		return
 	}
-	_ = store.Append(request, workingDir)
+	_ = store.Append(request, command, workingDir)
 }
 
 func runHistory(args []string, stdout, stderr io.Writer) int {
@@ -262,20 +259,42 @@ func runHistory(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "❌ Failed to run history UI: %v\n", err)
 		return 1
 	}
-	selected := selectedHistoryRequest(finalModel)
-	if selected == "" {
+	selected := selectedHistorySession(finalModel)
+	if strings.TrimSpace(selected.Request) == "" {
 		return 0
 	}
-	return run([]string{selected}, stdout, stderr)
+	if strings.TrimSpace(selected.Command) == "" {
+		return run([]string{selected.Request}, stdout, stderr)
+	}
+	copier := clipboardutil.SystemCopier{}
+	storeSessionHistory(selected.Request, selected.Command, selected.WorkingDir)
+	if err := outputSelectedCommand(stdout, stderr, copier, selected.Command); err != nil {
+		return 1
+	}
+	return 0
 }
 
-func selectedHistoryRequest(finalModel tea.Model) string {
+func selectedHistorySession(finalModel tea.Model) history.Session {
 	switch m := finalModel.(type) {
 	case ui.HistoryModel:
-		return strings.TrimSpace(m.SelectedRequest())
+		return m.SelectedSession()
 	case *ui.HistoryModel:
-		return strings.TrimSpace(m.SelectedRequest())
+		return m.SelectedSession()
 	default:
-		return ""
+		return history.Session{}
 	}
+}
+
+func outputSelectedCommand(stdout, stderr io.Writer, copier clipboardutil.SystemCopier, command string) error {
+	command = strings.TrimSpace(command)
+	if command == "" {
+		return nil
+	}
+	fmt.Fprintln(stdout, command)
+	if err := copier.Copy(command); err != nil {
+		fmt.Fprintf(stderr, "❌ Failed to copy selected command: %v\n", err)
+		return err
+	}
+	fmt.Fprintln(stderr, "📋 Command copied to clipboard.")
+	return nil
 }
